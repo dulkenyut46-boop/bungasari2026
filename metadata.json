@@ -1,0 +1,6 @@
+{
+  "name": "Bunga Sari - Rekapitulasi Panen & Omset Kelompok Tani",
+  "description": "Sistem pencatatan hasil panen sawit petani, perbandingan timbangan TPH vs PKS pabrik, selisih medaran, dan omset kelompok tani Bunga Sari.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
