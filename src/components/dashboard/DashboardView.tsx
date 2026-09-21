@@ -33,16 +33,21 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { HarvestBatch } from '../../types';
+import { HarvestBatch, Farmer } from '../../types';
+import { DashboardFarmersSidebar } from './DashboardFarmersSidebar';
 
 interface DashboardViewProps {
   onSelectBatch: (batch: HarvestBatch) => void;
   onOpenNewBatchModal: () => void;
+  onViewSlip?: (farmer: Farmer) => void;
+  onOpenNewFarmer?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectBatch,
   onOpenNewBatchModal,
+  onViewSlip,
+  onOpenNewFarmer,
 }) => {
   const { metrics, harvestBatches, currentUser, setActiveTab, farmers } = useApp();
 
@@ -219,10 +224,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left 2 Cols: Timeline Area Chart (TPH vs Pabrik) */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
+      {/* Main Dashboard Layout: Left Content (8 cols) & Right Farmers Sidebar (4 cols) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+        {/* Left Column (8 cols): Charts & Tables */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            {/* Left 7 Cols on XL: Timeline Area Chart (TPH vs Pabrik) */}
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 xl:col-span-7">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-2">
             <div>
               <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
@@ -292,8 +301,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Right 1 Col: Donut Financial Allocation */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        {/* Right Col on XL: Donut Financial Allocation */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 xl:col-span-5">
           <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
               Alokasi Perputaran Nilai
@@ -475,5 +484,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
     </div>
-  );
+
+    {/* Right Column: Samping Sebelah Kanan (Daftar Nama Petani) */}
+    <div className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
+      <DashboardFarmersSidebar
+        farmers={farmers}
+        harvestBatches={harvestBatches}
+        onViewSlip={onViewSlip}
+        onOpenNewFarmer={onOpenNewFarmer}
+      />
+    </div>
+  </div>
+</div>
+);
 };

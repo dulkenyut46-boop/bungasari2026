@@ -85,6 +85,8 @@ const MainAppContent: React.FC = () => {
               <DashboardView
                 onSelectBatch={handleSelectBatch}
                 onOpenNewBatchModal={handleOpenNewBatch}
+                onViewSlip={handleViewSlip}
+                onOpenNewFarmer={handleOpenNewFarmer}
               />
             )}
 
