@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { HarvestBatch } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { parseCSV, downloadHarvestBatchTemplate, formatRupiah, formatKg } from '../../lib/utils';
+import { parseSpreadsheetFile, downloadHarvestBatchTemplate, formatRupiah, formatKg } from '../../lib/utils';
 import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 
 interface HarvestBatchImportModalProps {
@@ -29,142 +29,139 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
     onClose();
   };
 
-  const processFile = (file: File) => {
-    if (!file.name.endsWith('.csv')) {
-      setErrorMsg('Format file harus berupa .csv');
+  const processFile = async (file: File) => {
+    const validExts = ['.xlsx', '.xls', '.csv'];
+    const isSupported = validExts.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!isSupported) {
+      setErrorMsg('Format file harus berupa Excel (.xlsx, .xls) atau .csv');
       return;
     }
 
     setErrorMsg('');
     setFileName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const rows = parseCSV(text);
+    try {
+      const rows = await parseSpreadsheetFile(file);
 
-        if (rows.length < 2) {
-          setErrorMsg('File CSV tidak berisi data atau baris kosong.');
-          return;
-        }
-
-        const headers = rows[0].map(h => h.toLowerCase().trim());
-        const batchNumIdx = headers.findIndex(h => h.includes('spb') || h.includes('batch') || h.includes('nomor'));
-        const harvestDateIdx = headers.findIndex(h => h.includes('tanggal panen') || h.includes('tgl panen'));
-        const factoryDateIdx = headers.findIndex(h => h.includes('tanggal pabrik') || h.includes('tgl pabrik'));
-        const driverIdx = headers.findIndex(h => h.includes('supir') || h.includes('driver'));
-        const plateIdx = headers.findIndex(h => h.includes('polisi') || h.includes('plat') || h.includes('truk'));
-        const factoryIdx = headers.findIndex(h => h.includes('pabrik') || h.includes('pks'));
-        const priceIdx = headers.findIndex(h => h.includes('harga') || h.includes('tbs') || h.includes('rp'));
-        const feeIdx = headers.findIndex(h => h.includes('iuran') || h.includes('kas'));
-        const grossIdx = headers.findIndex(h => h.includes('bruto'));
-        const tareIdx = headers.findIndex(h => h.includes('tarra') || h.includes('tara'));
-        const sortirIdx = headers.findIndex(h => h.includes('sortir'));
-        const tphWeightIdx = headers.findIndex(h => h.includes('total tph') || h.includes('kebun') || h.includes('tph'));
-
-        const newBatches: Omit<HarvestBatch, 'id'>[] = [];
-
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || row.length === 0) continue;
-
-          const batchNumber = (batchNumIdx !== -1 && row[batchNumIdx]?.trim()) 
-            ? row[batchNumIdx]?.trim() 
-            : `BS/PANEN/2026/IMP-${i}`;
-
-          const harvestDate = (harvestDateIdx !== -1 && row[harvestDateIdx]?.trim())
-            ? row[harvestDateIdx]?.trim()
-            : new Date().toISOString().split('T')[0];
-
-          const factoryDate = (factoryDateIdx !== -1 && row[factoryDateIdx]?.trim())
-            ? row[factoryDateIdx]?.trim()
-            : harvestDate;
-
-          const driverName = (driverIdx !== -1 && row[driverIdx]?.trim()) ? row[driverIdx]?.trim() : 'Supir Kelompok';
-          const truckPlate = (plateIdx !== -1 && row[plateIdx]?.trim()) ? row[plateIdx]?.trim() : 'BM 8000 BS';
-          const factoryDestination = (factoryIdx !== -1 && row[factoryIdx]?.trim()) 
-            ? row[factoryIdx]?.trim() 
-            : 'PKS Sawit Bunga Sari';
-
-          const tbsPricePerKg = priceIdx !== -1 ? parseFloat(row[priceIdx]?.replace(/[^0-9.]/g, '') || '2950') || 2950 : 2950;
-          const groupFeePerKg = feeIdx !== -1 ? parseFloat(row[feeIdx]?.replace(/[^0-9.]/g, '') || '25') || 25 : 25;
-
-          const factoryGrossKg = grossIdx !== -1 ? parseFloat(row[grossIdx]?.replace(/[^0-9.]/g, '') || '0') || 0 : 0;
-          const factoryTareKg = tareIdx !== -1 ? parseFloat(row[tareIdx]?.replace(/[^0-9.]/g, '') || '0') || 0 : 0;
-          const sortirPercentage = sortirIdx !== -1 ? parseFloat(row[sortirIdx]?.replace(/[^0-9.]/g, '') || '1.5') || 1.5 : 1.5;
-
-          const factoryNetKg = Math.max(0, factoryGrossKg - factoryTareKg);
-          const sortirKg = Math.round((factoryNetKg * sortirPercentage) / 100);
-          const factoryFinalNetKg = Math.max(0, factoryNetKg - sortirKg);
-
-          const totalTphWeightKg = tphWeightIdx !== -1 ? parseFloat(row[tphWeightIdx]?.replace(/[^0-9.]/g, '') || '0') || 0 : 0;
-
-          const weightDifferenceKg = factoryFinalNetKg - totalTphWeightKg;
-          const differenceStatus: 'surplus' | 'susut' | 'imbang' = weightDifferenceKg > 0 ? 'surplus' : weightDifferenceKg < 0 ? 'susut' : 'imbang';
-          const medaranOmsetValueRp = weightDifferenceKg > 0 ? Math.round(weightDifferenceKg * tbsPricePerKg) : 0;
-          const groupFeeTotalRp = Math.round(totalTphWeightKg * groupFeePerKg);
-          const totalGroupOmsetRp = medaranOmsetValueRp + groupFeeTotalRp;
-
-          // Default items assigned to first few farmers if available
-          const batchItems = farmers.slice(0, 3).map((f, fIdx) => {
-            const shareKg = Math.round(totalTphWeightKg / Math.min(farmers.length || 1, 3));
-            return {
-              farmerId: f.id,
-              farmerName: f.name,
-              bunchCount: 0,
-              tphWeightKg: shareKg,
-              tphLocation: f.blockLocation,
-              netTphKg: shareKg,
-              farmerShareRp: Math.round(shareKg * (tbsPricePerKg - groupFeePerKg)),
-              groupDeductionRp: Math.round(shareKg * groupFeePerKg),
-            };
-          });
-
-          const totalFarmerPayoutRp = batchItems.reduce((s, it) => s + (it.farmerShareRp || 0), 0);
-
-          newBatches.push({
-            batchNumber,
-            harvestDate,
-            factoryDate,
-            driverName,
-            truckPlate,
-            factoryDestination,
-            spbNumber: batchNumber,
-            ticketNumberPKS: `TK-PKS-${Math.floor(10000 + Math.random() * 90000)}`,
-            totalTphWeightKg,
-            factoryGrossKg,
-            factoryTareKg,
-            factoryNetKg,
-            sortirPercentage,
-            sortirKg,
-            factoryFinalNetKg,
-            tbsPricePerKg,
-            groupFeePerKg,
-            weightDifferenceKg,
-            differenceStatus,
-            medaranOmsetValueRp,
-            groupFeeTotalRp,
-            totalGroupOmsetRp,
-            totalFarmerPayoutRp,
-            transportFeeRp: 0,
-            loadingFeeRp: 0,
-            items: batchItems,
-            status: 'selesai',
-            notes: 'Diimpor via CSV',
-          });
-        }
-
-        if (newBatches.length === 0) {
-          setErrorMsg('Tidak ada baris panen yang dapat diproses dari CSV ini.');
-        } else {
-          setParsedBatches(newBatches);
-        }
-      } catch {
-        setErrorMsg('Gagal membaca isi file CSV.');
+      if (rows.length < 2) {
+        setErrorMsg('File Excel / CSV tidak berisi data atau baris kosong.');
+        return;
       }
-    };
-    reader.readAsText(file);
+
+      const headers = rows[0].map(h => h.toLowerCase().trim());
+      const batchNumIdx = headers.findIndex(h => h.includes('spb') || h.includes('batch') || h.includes('nomor'));
+      const harvestDateIdx = headers.findIndex(h => h.includes('tanggal panen') || h.includes('tgl panen'));
+      const factoryDateIdx = headers.findIndex(h => h.includes('tanggal pabrik') || h.includes('tgl pabrik'));
+      const driverIdx = headers.findIndex(h => h.includes('supir') || h.includes('driver'));
+      const plateIdx = headers.findIndex(h => h.includes('polisi') || h.includes('plat') || h.includes('truk'));
+      const factoryIdx = headers.findIndex(h => h.includes('pabrik') || h.includes('pks'));
+      const priceIdx = headers.findIndex(h => h.includes('harga') || h.includes('tbs') || h.includes('rp'));
+      const feeIdx = headers.findIndex(h => h.includes('iuran') || h.includes('kas'));
+      const grossIdx = headers.findIndex(h => h.includes('bruto'));
+      const tareIdx = headers.findIndex(h => h.includes('tarra') || h.includes('tara'));
+      const sortirIdx = headers.findIndex(h => h.includes('sortir'));
+      const tphWeightIdx = headers.findIndex(h => h.includes('total tph') || h.includes('kebun') || h.includes('tph'));
+
+      const newBatches: Omit<HarvestBatch, 'id'>[] = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+
+        const batchNumber = (batchNumIdx !== -1 && row[batchNumIdx]?.trim()) 
+          ? row[batchNumIdx]?.trim() 
+          : `BS/PANEN/2026/IMP-${i}`;
+
+        const harvestDate = (harvestDateIdx !== -1 && row[harvestDateIdx]?.trim())
+          ? row[harvestDateIdx]?.trim()
+          : new Date().toISOString().split('T')[0];
+
+        const factoryDate = (factoryDateIdx !== -1 && row[factoryDateIdx]?.trim())
+          ? row[factoryDateIdx]?.trim()
+          : harvestDate;
+
+        const driverName = (driverIdx !== -1 && row[driverIdx]?.trim()) ? row[driverIdx]?.trim() : 'Supir Kelompok';
+        const truckPlate = (plateIdx !== -1 && row[plateIdx]?.trim()) ? row[plateIdx]?.trim() : 'BM 8000 BS';
+        const factoryDestination = (factoryIdx !== -1 && row[factoryIdx]?.trim()) 
+          ? row[factoryIdx]?.trim() 
+          : 'PKS Sawit Bunga Sari';
+
+        const tbsPricePerKg = priceIdx !== -1 ? parseFloat(row[priceIdx]?.replace(/[^0-9.]/g, '') || '2950') || 2950 : 2950;
+        const groupFeePerKg = feeIdx !== -1 ? parseFloat(row[feeIdx]?.replace(/[^0-9.]/g, '') || '25') || 25 : 25;
+
+        const factoryGrossKg = grossIdx !== -1 ? parseFloat(row[grossIdx]?.replace(/[^0-9.]/g, '') || '0') || 0 : 0;
+        const factoryTareKg = tareIdx !== -1 ? parseFloat(row[tareIdx]?.replace(/[^0-9.]/g, '') || '0') || 0 : 0;
+        const sortirPercentage = sortirIdx !== -1 ? parseFloat(row[sortirIdx]?.replace(/[^0-9.]/g, '') || '1.5') || 1.5 : 1.5;
+
+        const factoryNetKg = Math.max(0, factoryGrossKg - factoryTareKg);
+        const sortirKg = Math.round((factoryNetKg * sortirPercentage) / 100);
+        const factoryFinalNetKg = Math.max(0, factoryNetKg - sortirKg);
+
+        const totalTphWeightKg = tphWeightIdx !== -1 ? parseFloat(row[tphWeightIdx]?.replace(/[^0-9.]/g, '') || '0') || 0 : 0;
+
+        const weightDifferenceKg = factoryFinalNetKg - totalTphWeightKg;
+        const differenceStatus: 'surplus' | 'susut' | 'imbang' = weightDifferenceKg > 0 ? 'surplus' : weightDifferenceKg < 0 ? 'susut' : 'imbang';
+        const medaranOmsetValueRp = weightDifferenceKg > 0 ? Math.round(weightDifferenceKg * tbsPricePerKg) : 0;
+        const groupFeeTotalRp = Math.round(totalTphWeightKg * groupFeePerKg);
+        const totalGroupOmsetRp = medaranOmsetValueRp + groupFeeTotalRp;
+
+        // Default items assigned to first few farmers if available
+        const batchItems = farmers.slice(0, 3).map((f) => {
+          const shareKg = Math.round(totalTphWeightKg / Math.min(farmers.length || 1, 3));
+          return {
+            farmerId: f.id,
+            farmerName: f.name,
+            bunchCount: 0,
+            tphWeightKg: shareKg,
+            tphLocation: f.blockLocation,
+            netTphKg: shareKg,
+            farmerShareRp: Math.round(shareKg * (tbsPricePerKg - groupFeePerKg)),
+            groupDeductionRp: Math.round(shareKg * groupFeePerKg),
+          };
+        });
+
+        const totalFarmerPayoutRp = batchItems.reduce((s, it) => s + (it.farmerShareRp || 0), 0);
+
+        newBatches.push({
+          batchNumber,
+          harvestDate,
+          factoryDate,
+          driverName,
+          truckPlate,
+          factoryDestination,
+          spbNumber: batchNumber,
+          ticketNumberPKS: `TK-PKS-${Math.floor(10000 + Math.random() * 90000)}`,
+          totalTphWeightKg,
+          factoryGrossKg,
+          factoryTareKg,
+          factoryNetKg,
+          sortirPercentage,
+          sortirKg,
+          factoryFinalNetKg,
+          tbsPricePerKg,
+          groupFeePerKg,
+          weightDifferenceKg,
+          differenceStatus,
+          medaranOmsetValueRp,
+          groupFeeTotalRp,
+          totalGroupOmsetRp,
+          totalFarmerPayoutRp,
+          transportFeeRp: 0,
+          loadingFeeRp: 0,
+          items: batchItems,
+          status: 'selesai',
+          notes: 'Diimpor via Excel / CSV',
+        });
+      }
+
+      if (newBatches.length === 0) {
+        setErrorMsg('Tidak ada baris panen yang dapat diproses dari file ini.');
+      } else {
+        setParsedBatches(newBatches);
+      }
+    } catch {
+      setErrorMsg('Gagal membaca isi file Excel / CSV.');
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,8 +194,8 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Import Catatan Panen Baru (CSV)"
-      subtitle="Unggah file CSV rekapan timbangan TPH dan pabrik untuk mencatat panen massal"
+      title="Import Catatan Panen Baru (Excel / CSV)"
+      subtitle="Unggah file Excel (.xlsx) atau CSV rekapan timbangan TPH dan pabrik untuk mencatat panen massal"
       maxWidth="4xl"
       footer={
         <div className="flex items-center justify-between w-full">
@@ -208,7 +205,7 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
                 {parsedBatches.length} catatan panen siap diimpor & dicatat ke kas
               </span>
             ) : (
-              'Format CSV: No SPB, Tanggal, Pabrik, Harga TBS, Bruto, Tarra, Sortir %, Berat TPH'
+              'Format Excel: No SPB, Tanggal, Pabrik, Harga TBS, Bruto, Tarra, Sortir %, Berat TPH'
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -238,10 +235,10 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
             <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
               <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
-                Gunakan Template CSV Panen Baru Resmi
+                Gunakan Template Excel Panen Baru Resmi (.xlsx)
               </p>
               <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
-                File contoh memuat struktur kolom timbangan TPH dan Pabrik PKS secara akurat
+                File Excel yang rapi dengan kolom timbangan TPH dan Pabrik PKS terstruktur jelas
               </p>
             </div>
           </div>
@@ -250,7 +247,7 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
             onClick={downloadHarvestBatchTemplate}
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 cursor-pointer shadow-2xs self-start sm:self-auto"
           >
-            <Download className="h-3.5 w-3.5" /> Unduh Template CSV Panen
+            <Download className="h-3.5 w-3.5" /> Unduh Template Excel (.xlsx)
           </button>
         </div>
 
@@ -273,7 +270,7 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv"
+              accept=".xlsx,.xls,.csv"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -281,10 +278,10 @@ export const HarvestBatchImportModal: React.FC<HarvestBatchImportModalProps> = (
               <Upload className="h-6 w-6" />
             </div>
             <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Klik untuk memilih file CSV atau seret file ke sini
+              Klik untuk memilih file Excel (.xlsx / .xls) atau CSV, atau seret ke sini
             </p>
             <p className="text-[11px] text-slate-500 mt-1">
-              File harus berupa .CSV berisi catatan panen, timbangan pabrik & kebun
+              Mendukung Microsoft Excel (.xlsx, .xls) dan CSV
             </p>
             {fileName && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">

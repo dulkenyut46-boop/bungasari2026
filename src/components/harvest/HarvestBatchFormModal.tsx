@@ -6,7 +6,7 @@ import {
   formatRupiah,
   formatNumber,
   formatKg,
-  parseCSV,
+  parseSpreadsheetFile,
   downloadTphWeighingTemplate,
 } from '../../lib/utils';
 import {
@@ -172,73 +172,68 @@ export const HarvestBatchFormModal: React.FC<HarvestBatchFormModalProps> = ({
     setItems(prev => [...prev, newRow]);
   };
 
-  // Import TPH weighing CSV
-  const handleImportTphCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Import TPH weighing Excel / CSV
+  const handleImportTphSpreadsheet = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = event => {
-      try {
-        const text = event.target?.result as string;
-        const parsed = parseCSV(text);
-        if (parsed.length < 2) {
-          showToast('File CSV timbangan kosong atau tidak valid', 'error');
-          return;
-        }
-
-        const header = parsed[0].map(h => h.toLowerCase().trim());
-        const nameIdx = header.findIndex(h => h.includes('nama') || h.includes('petani'));
-        const locIdx = header.findIndex(h => h.includes('lokasi') || h.includes('tph') || h.includes('blok'));
-        const weightIdx = header.findIndex(h => h.includes('berat') || h.includes('kg') || h.includes('timbang'));
-
-        if (nameIdx === -1 || weightIdx === -1) {
-          showToast('Format kolom CSV tidak sesuai. Gunakan kolom: Nama Petani, Lokasi TPH, Berat TPH (Kg)', 'error');
-          return;
-        }
-
-        const newItems: HarvestFarmerDetail[] = [];
-        for (let i = 1; i < parsed.length; i++) {
-          const row = parsed[i];
-          if (!row || row.length <= Math.max(nameIdx, weightIdx)) continue;
-          const rawName = row[nameIdx]?.trim();
-          if (!rawName) continue;
-
-          const rawLoc = locIdx !== -1 ? row[locIdx]?.trim() || `TPH 0${i}` : `TPH 0${i}`;
-          const cleanWeightStr = row[weightIdx]?.replace(/[^0-9.]/g, '') || '0';
-          const weight = parseFloat(cleanWeightStr) || 0;
-
-          // Match with registered farmer or fallback
-          const matched = farmers.find(
-            f => f.name.toLowerCase().includes(rawName.toLowerCase()) || rawName.toLowerCase().includes(f.name.toLowerCase())
-          );
-
-          newItems.push({
-            farmerId: matched?.id || `farmer-tph-${i}`,
-            farmerName: matched ? matched.name : rawName,
-            bunchCount: 0,
-            tphWeightKg: weight,
-            tphLocation: rawLoc || matched?.blockLocation || `TPH 0${i}`,
-            sortirDeductionKg: 0,
-            netTphKg: weight,
-            farmerShareRp: Math.round(weight * (tbsPricePerKg - groupFeePerKg)),
-            groupDeductionRp: Math.round(weight * groupFeePerKg),
-          });
-        }
-
-        if (newItems.length > 0) {
-          setItems(newItems);
-          showToast(`Berhasil mengimpor ${newItems.length} data timbangan TPH petani!`, 'success');
-        } else {
-          showToast('Tidak ada baris timbangan valid dalam file CSV', 'error');
-        }
-      } catch (err) {
-        showToast('Gagal memproses file CSV', 'error');
-      } finally {
-        e.target.value = '';
+    try {
+      const parsed = await parseSpreadsheetFile(file);
+      if (parsed.length < 2) {
+        showToast('File timbangan kosong atau tidak valid', 'error');
+        return;
       }
-    };
-    reader.readAsText(file);
+
+      const header = parsed[0].map(h => h.toLowerCase().trim());
+      const nameIdx = header.findIndex(h => h.includes('nama') || h.includes('petani'));
+      const locIdx = header.findIndex(h => h.includes('lokasi') || h.includes('tph') || h.includes('blok'));
+      const weightIdx = header.findIndex(h => h.includes('berat') || h.includes('kg') || h.includes('timbang'));
+
+      if (nameIdx === -1 || weightIdx === -1) {
+        showToast('Format kolom tidak sesuai. Gunakan kolom: Nama Petani, Lokasi TPH, Berat TPH (Kg)', 'error');
+        return;
+      }
+
+      const newItems: HarvestFarmerDetail[] = [];
+      for (let i = 1; i < parsed.length; i++) {
+        const row = parsed[i];
+        if (!row || row.length <= Math.max(nameIdx, weightIdx)) continue;
+        const rawName = row[nameIdx]?.trim();
+        if (!rawName) continue;
+
+        const rawLoc = locIdx !== -1 ? row[locIdx]?.trim() || `TPH 0${i}` : `TPH 0${i}`;
+        const cleanWeightStr = row[weightIdx]?.replace(/[^0-9.]/g, '') || '0';
+        const weight = parseFloat(cleanWeightStr) || 0;
+
+        // Match with registered farmer or fallback
+        const matched = farmers.find(
+          f => f.name.toLowerCase().includes(rawName.toLowerCase()) || rawName.toLowerCase().includes(f.name.toLowerCase())
+        );
+
+        newItems.push({
+          farmerId: matched?.id || `farmer-tph-${i}`,
+          farmerName: matched ? matched.name : rawName,
+          bunchCount: 0,
+          tphWeightKg: weight,
+          tphLocation: rawLoc || matched?.blockLocation || `TPH 0${i}`,
+          sortirDeductionKg: 0,
+          netTphKg: weight,
+          farmerShareRp: Math.round(weight * (tbsPricePerKg - groupFeePerKg)),
+          groupDeductionRp: Math.round(weight * groupFeePerKg),
+        });
+      }
+
+      if (newItems.length > 0) {
+        setItems(newItems);
+        showToast(`Berhasil mengimpor ${newItems.length} data timbangan TPH petani!`, 'success');
+      } else {
+        showToast('Tidak ada baris timbangan valid dalam file', 'error');
+      }
+    } catch {
+      showToast('Gagal memproses file Excel / CSV', 'error');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   // Remove farmer row
@@ -501,21 +496,21 @@ export const HarvestBatchFormModal: React.FC<HarvestBatchFormModalProps> = ({
                 type="button"
                 onClick={downloadTphWeighingTemplate}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs"
-                title="Unduh format template CSV timbangan TPH"
+                title="Unduh format template Excel rapi (.xlsx) timbangan TPH"
               >
-                <Download className="h-3.5 w-3.5 text-emerald-600" /> Template TPH
+                <Download className="h-3.5 w-3.5 text-emerald-600" /> Template TPH (.xlsx)
               </button>
 
               <label
                 className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer transition-colors shadow-2xs"
-                title="Import data timbangan TPH dari file CSV"
+                title="Import data timbangan TPH dari file Excel (.xlsx) atau CSV"
               >
-                <Upload className="h-3.5 w-3.5" /> Import TPH (CSV)
+                <Upload className="h-3.5 w-3.5" /> Import TPH (Excel/CSV)
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".xlsx,.xls,.csv"
                   className="hidden"
-                  onChange={handleImportTphCSV}
+                  onChange={handleImportTphSpreadsheet}
                 />
               </label>
 

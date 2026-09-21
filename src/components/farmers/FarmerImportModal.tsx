@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Modal } from '../common/Modal';
 import { Farmer } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { parseCSV, downloadFarmerTemplate } from '../../lib/utils';
+import { parseSpreadsheetFile, downloadFarmerTemplate } from '../../lib/utils';
 import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 
 interface FarmerImportModalProps {
@@ -29,100 +29,97 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
     onClose();
   };
 
-  const processFile = (file: File) => {
-    if (!file.name.endsWith('.csv')) {
-      setErrorMsg('Format file harus berakhiran .csv');
+  const processFile = async (file: File) => {
+    const validExts = ['.xlsx', '.xls', '.csv'];
+    const isSupported = validExts.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!isSupported) {
+      setErrorMsg('Format file harus berupa Excel (.xlsx, .xls) atau .csv');
       return;
     }
 
     setErrorMsg('');
     setFileName(file.name);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const text = e.target?.result as string;
-        const rows = parseCSV(text);
+    try {
+      const rows = await parseSpreadsheetFile(file);
 
-        if (rows.length < 2) {
-          setErrorMsg('File CSV tidak memiliki data atau baris kosong.');
-          return;
-        }
-
-        const headers = rows[0].map(h => h.toLowerCase().trim());
-        const nameIdx = headers.findIndex(h => h.includes('nama'));
-        const codeIdx = headers.findIndex(h => h.includes('kode'));
-        const phoneIdx = headers.findIndex(h => h.includes('telepon') || h.includes('phone') || h.includes('hp') || h.includes('wa'));
-        const areaIdx = headers.findIndex(h => h.includes('luas') || h.includes('lahan') || h.includes('ha'));
-        const blockIdx = headers.findIndex(h => h.includes('blok') || h.includes('lokasi') || h.includes('tph'));
-        const yearIdx = headers.findIndex(h => h.includes('tahun') || h.includes('tanam'));
-        const bankIdx = headers.findIndex(h => h.includes('bank'));
-        const accNoIdx = headers.findIndex(h => h.includes('rekening') || h.includes('norek'));
-        const accHolderIdx = headers.findIndex(h => h.includes('atas') || h.includes('pemilik'));
-
-        if (nameIdx === -1) {
-          setErrorMsg('Kolom "Nama Petani" tidak ditemukan pada baris header CSV.');
-          return;
-        }
-
-        const currentCodes = new Set(farmers.map(f => f.code.toUpperCase()));
-        let autoCodeNum = farmers.length + 1;
-
-        const importedFarmers: Omit<Farmer, 'id'>[] = [];
-
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || row.length === 0) continue;
-          const name = row[nameIdx]?.trim();
-          if (!name) continue;
-
-          let code = codeIdx !== -1 ? row[codeIdx]?.trim() : '';
-          if (!code) {
-            let candidate = `BS-${String(autoCodeNum).padStart(3, '0')}`;
-            while (currentCodes.has(candidate)) {
-              autoCodeNum++;
-              candidate = `BS-${String(autoCodeNum).padStart(3, '0')}`;
-            }
-            code = candidate;
-            currentCodes.add(candidate);
-            autoCodeNum++;
-          }
-
-          const phone = phoneIdx !== -1 ? row[phoneIdx]?.trim() || '-' : '-';
-          const landAreaHa = areaIdx !== -1 ? parseFloat(row[areaIdx]?.replace(',', '.') || '2.0') || 2.0 : 2.0;
-          const blockLocation = blockIdx !== -1 ? row[blockIdx]?.trim() || 'Blok Kebun - TPH 01' : 'Blok Kebun - TPH 01';
-          const plantYear = yearIdx !== -1 ? parseInt(row[yearIdx] || '2018', 10) || 2018 : 2018;
-          const bankName = bankIdx !== -1 ? row[bankIdx]?.trim() : 'BRI';
-          const accountNumber = accNoIdx !== -1 ? row[accNoIdx]?.trim() : '-';
-          const accountHolder = accHolderIdx !== -1 ? row[accHolderIdx]?.trim() : name;
-
-          importedFarmers.push({
-            code,
-            name,
-            phone,
-            landAreaHa,
-            blockLocation,
-            plantYear,
-            bankAccount: {
-              bankName: bankName || 'BRI',
-              accountNumber: accountNumber || '-',
-              accountHolder: accountHolder || name,
-            },
-            joinedDate: new Date().toISOString().split('T')[0],
-            status: 'aktif',
-          });
-        }
-
-        if (importedFarmers.length === 0) {
-          setErrorMsg('Tidak ada baris data petani yang dapat diproses dari CSV ini.');
-        } else {
-          setParsedData(importedFarmers);
-        }
-      } catch {
-        setErrorMsg('Gagal membaca isi file CSV.');
+      if (rows.length < 2) {
+        setErrorMsg('File Excel / CSV tidak memiliki data atau baris kosong.');
+        return;
       }
-    };
-    reader.readAsText(file);
+
+      const headers = rows[0].map(h => h.toLowerCase().trim());
+      const nameIdx = headers.findIndex(h => h.includes('nama'));
+      const codeIdx = headers.findIndex(h => h.includes('kode'));
+      const phoneIdx = headers.findIndex(h => h.includes('telepon') || h.includes('phone') || h.includes('hp') || h.includes('wa'));
+      const areaIdx = headers.findIndex(h => h.includes('luas') || h.includes('lahan') || h.includes('ha'));
+      const blockIdx = headers.findIndex(h => h.includes('blok') || h.includes('lokasi') || h.includes('tph'));
+      const yearIdx = headers.findIndex(h => h.includes('tahun') || h.includes('tanam'));
+      const bankIdx = headers.findIndex(h => h.includes('bank'));
+      const accNoIdx = headers.findIndex(h => h.includes('rekening') || h.includes('norek'));
+      const accHolderIdx = headers.findIndex(h => h.includes('atas') || h.includes('pemilik'));
+
+      if (nameIdx === -1) {
+        setErrorMsg('Kolom "Nama Petani" tidak ditemukan pada baris header file.');
+        return;
+      }
+
+      const currentCodes = new Set(farmers.map(f => f.code.toUpperCase()));
+      let autoCodeNum = farmers.length + 1;
+
+      const importedFarmers: Omit<Farmer, 'id'>[] = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        const name = row[nameIdx]?.trim();
+        if (!name) continue;
+
+        let code = codeIdx !== -1 ? row[codeIdx]?.trim() : '';
+        if (!code) {
+          let candidate = `BS-${String(autoCodeNum).padStart(3, '0')}`;
+          while (currentCodes.has(candidate)) {
+            autoCodeNum++;
+            candidate = `BS-${String(autoCodeNum).padStart(3, '0')}`;
+          }
+          code = candidate;
+          currentCodes.add(candidate);
+          autoCodeNum++;
+        }
+
+        const phone = phoneIdx !== -1 ? row[phoneIdx]?.trim() || '-' : '-';
+        const landAreaHa = areaIdx !== -1 ? parseFloat(row[areaIdx]?.replace(',', '.') || '2.0') || 2.0 : 2.0;
+        const blockLocation = blockIdx !== -1 ? row[blockIdx]?.trim() || 'Blok Kebun - TPH 01' : 'Blok Kebun - TPH 01';
+        const plantYear = yearIdx !== -1 ? parseInt(row[yearIdx] || '2018', 10) || 2018 : 2018;
+        const bankName = bankIdx !== -1 ? row[bankIdx]?.trim() : 'BRI';
+        const accountNumber = accNoIdx !== -1 ? row[accNoIdx]?.trim() : '-';
+        const accountHolder = accHolderIdx !== -1 ? row[accHolderIdx]?.trim() : name;
+
+        importedFarmers.push({
+          code,
+          name,
+          phone,
+          landAreaHa,
+          blockLocation,
+          plantYear,
+          bankAccount: {
+            bankName: bankName || 'BRI',
+            accountNumber: accountNumber || '-',
+            accountHolder: accountHolder || name,
+          },
+          joinedDate: new Date().toISOString().split('T')[0],
+          status: 'aktif',
+        });
+      }
+
+      if (importedFarmers.length === 0) {
+        setErrorMsg('Tidak ada baris data petani yang dapat diproses dari file ini.');
+      } else {
+        setParsedData(importedFarmers);
+      }
+    } catch {
+      setErrorMsg('Gagal membaca isi file Excel / CSV.');
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,8 +152,8 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Import Data Nama Petani (CSV)"
-      subtitle="Unggah file CSV daftar anggota kelompok tani untuk penambahan data secara massal"
+      title="Import Data Nama Petani (Excel / CSV)"
+      subtitle="Unggah file Excel (.xlsx) atau CSV daftar anggota kelompok tani untuk penambahan data secara massal"
       maxWidth="3xl"
       footer={
         <div className="flex items-center justify-between w-full">
@@ -166,7 +163,7 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
                 {parsedData.length} data petani siap diimpor
               </span>
             ) : (
-              'Format CSV: Nama Petani, No Telepon, Luas Lahan, Blok TPH, Rekening'
+              'Format Excel: Nama Petani, No Telepon, Luas Lahan, Blok TPH, Rekening'
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -196,10 +193,10 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
             <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
               <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
-                Gunakan Template CSV Resmi Bunga Sari
+                Gunakan Template Excel Resmi Bunga Sari (.xlsx)
               </p>
               <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
-                Unduh file contoh yang sudah disesuaikan dengan kolom-kolom data petani
+                File Excel yang rapi dengan tata letak kolom jelas dan contoh data anggota
               </p>
             </div>
           </div>
@@ -208,7 +205,7 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
             onClick={downloadFarmerTemplate}
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 cursor-pointer shadow-2xs self-start sm:self-auto"
           >
-            <Download className="h-3.5 w-3.5" /> Unduh Template CSV
+            <Download className="h-3.5 w-3.5" /> Unduh Template Excel (.xlsx)
           </button>
         </div>
 
@@ -231,7 +228,7 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv"
+              accept=".xlsx,.xls,.csv"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -239,10 +236,10 @@ export const FarmerImportModal: React.FC<FarmerImportModalProps> = ({ isOpen, on
               <Upload className="h-6 w-6" />
             </div>
             <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Klik untuk memilih file CSV atau seret file ke sini
+              Klik untuk memilih file Excel (.xlsx / .xls) atau CSV, atau seret ke sini
             </p>
             <p className="text-[11px] text-slate-500 mt-1">
-              File harus berupa .CSV dengan pemisah koma (,) atau titik koma (;)
+              Mendukung Microsoft Excel (.xlsx, .xls) dan CSV
             </p>
             {fileName && (
               <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">

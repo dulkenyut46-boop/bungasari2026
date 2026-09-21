@@ -158,9 +158,9 @@ export const FarmersView: React.FC<FarmersViewProps> = ({
             type="button"
             onClick={downloadFarmerTemplate}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs"
-            title="Unduh Template Format CSV Petani"
+            title="Unduh Template Excel Rapi (.xlsx) Data Petani"
           >
-            <Download className="h-4 w-4 text-emerald-600" /> Template Petani
+            <Download className="h-4 w-4 text-emerald-600" /> Template Petani (.xlsx)
           </button>
 
           {currentUser.role === 'admin' && (
@@ -168,9 +168,9 @@ export const FarmersView: React.FC<FarmersViewProps> = ({
               type="button"
               onClick={() => setIsImportModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 cursor-pointer transition-colors shadow-2xs"
-              title="Import Data Nama Petani Massal via CSV"
+              title="Import Data Nama Petani Massal via Excel / CSV"
             >
-              <Upload className="h-4 w-4" /> Import Petani (CSV)
+              <Upload className="h-4 w-4" /> Import Petani (Excel/CSV)
             </button>
           )}
 
