@@ -157,63 +157,70 @@ export const HarvestBatchDetailModal: React.FC<HarvestBatchDetailModalProps> = (
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-100/70 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="py-2.5 px-3">No</th>
-                  <th className="py-2.5 px-3">Nama Petani</th>
-                  <th className="py-2.5 px-3">Lokasi TPH</th>
-                  <th className="py-2.5 px-3 text-right">Janjang</th>
-                  <th className="py-2.5 px-3 text-right">Berat TPH</th>
-                  <th className="py-2.5 px-3 text-right">BJR (Kg/Jjg)</th>
-                  <th className="py-2.5 px-3 text-right">Iuran Kas (Rp 25)</th>
-                  <th className="py-2.5 px-3 text-right">Hak Petani</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {batch.items.map((item, idx) => {
-                  const bjr = item.bunchCount > 0 ? (item.tphWeightKg / item.bunchCount).toFixed(1) : '-';
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
-                      <td className="py-2 px-3 text-slate-400">{idx + 1}</td>
-                      <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">
-                        {item.farmerName}
+            {(() => {
+              const hasJanjang = batch.items.some(i => (i.bunchCount || 0) > 0);
+              return (
+                <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                  <thead className="bg-slate-100/70 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                      <th className="py-2.5 px-3">No</th>
+                      <th className="py-2.5 px-3">Nama Petani</th>
+                      <th className="py-2.5 px-3">Lokasi TPH</th>
+                      {hasJanjang && <th className="py-2.5 px-3 text-right">Janjang</th>}
+                      <th className="py-2.5 px-3 text-right">Berat TPH (Kg)</th>
+                      {hasJanjang && <th className="py-2.5 px-3 text-right">BJR (Kg/Jjg)</th>}
+                      <th className="py-2.5 px-3 text-right">Iuran Kas (Rp 25)</th>
+                      <th className="py-2.5 px-3 text-right">Hak Petani</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {batch.items.map((item, idx) => {
+                      const bjr = (item.bunchCount || 0) > 0 ? (item.tphWeightKg / item.bunchCount!).toFixed(1) : '-';
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                          <td className="py-2 px-3 text-slate-400">{idx + 1}</td>
+                          <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">
+                            {item.farmerName}
+                          </td>
+                          <td className="py-2 px-3 text-slate-500">{item.tphLocation}</td>
+                          {hasJanjang && <td className="py-2 px-3 text-right">{item.bunchCount || '-'}</td>}
+                          <td className="py-2 px-3 text-right font-medium text-slate-900 dark:text-slate-100">
+                            {formatNumber(item.tphWeightKg)} Kg
+                          </td>
+                          {hasJanjang && <td className="py-2 px-3 text-right text-slate-500">{bjr}</td>}
+                          <td className="py-2 px-3 text-right text-slate-500">
+                            {formatRupiah(item.groupDeductionRp)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatRupiah(item.farmerShareRp)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-50/80 font-bold text-slate-900 dark:bg-slate-800/80 dark:text-white border-t border-slate-200 dark:border-slate-700">
+                    <tr>
+                      <td colSpan={3} className="py-2.5 px-3">
+                        TOTAL KEBUN (TPH):
                       </td>
-                      <td className="py-2 px-3 text-slate-500">{item.tphLocation}</td>
-                      <td className="py-2 px-3 text-right">{item.bunchCount}</td>
-                      <td className="py-2 px-3 text-right font-medium text-slate-900 dark:text-slate-100">
-                        {formatNumber(item.tphWeightKg)} Kg
+                      {hasJanjang && <td className="py-2.5 px-3 text-right">{batch.totalBunches || '-'}</td>}
+                      <td className="py-2.5 px-3 text-right">{formatKg(batch.totalTphWeightKg)}</td>
+                      {hasJanjang && (
+                        <td className="py-2.5 px-3 text-right">
+                          {batch.totalBunches ? (batch.totalTphWeightKg / batch.totalBunches).toFixed(1) : '-'}
+                        </td>
+                      )}
+                      <td className="py-2.5 px-3 text-right text-sky-600">
+                        {formatRupiah(batch.groupFeeTotalRp)}
                       </td>
-                      <td className="py-2 px-3 text-right text-slate-500">{bjr}</td>
-                      <td className="py-2 px-3 text-right text-slate-500">
-                        {formatRupiah(item.groupDeductionRp)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {formatRupiah(item.farmerShareRp)}
+                      <td className="py-2.5 px-3 text-right text-emerald-600">
+                        {formatRupiah(batch.totalFarmerPayoutRp)}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-slate-50/80 font-bold text-slate-900 dark:bg-slate-800/80 dark:text-white border-t border-slate-200 dark:border-slate-700">
-                <tr>
-                  <td colSpan={3} className="py-2.5 px-3">
-                    TOTAL KEBUN (TPH):
-                  </td>
-                  <td className="py-2.5 px-3 text-right">{batch.totalBunches}</td>
-                  <td className="py-2.5 px-3 text-right">{formatKg(batch.totalTphWeightKg)}</td>
-                  <td className="py-2.5 px-3 text-right">
-                    {(batch.totalTphWeightKg / batch.totalBunches).toFixed(1)}
-                  </td>
-                  <td className="py-2.5 px-3 text-right text-sky-600">
-                    {formatRupiah(batch.groupFeeTotalRp)}
-                  </td>
-                  <td className="py-2.5 px-3 text-right text-emerald-600">
-                    {formatRupiah(batch.totalFarmerPayoutRp)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                  </tfoot>
+                </table>
+              );
+            })()}
           </div>
         </div>
 

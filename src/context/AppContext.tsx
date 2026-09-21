@@ -32,11 +32,13 @@ interface AppContextType {
 
   // Farmer CRUD
   addFarmer: (data: Omit<Farmer, 'id'>) => void;
+  bulkAddFarmers: (dataList: Omit<Farmer, 'id'>[]) => number;
   updateFarmer: (id: string, updates: Partial<Farmer>) => void;
   deleteFarmer: (id: string) => void;
 
   // Harvest Batch CRUD
   addHarvestBatch: (data: Omit<HarvestBatch, 'id'>) => void;
+  bulkAddHarvestBatches: (batchList: Omit<HarvestBatch, 'id'>[]) => number;
   updateHarvestBatch: (id: string, updates: Partial<HarvestBatch>) => void;
   deleteHarvestBatch: (id: string) => void;
 
@@ -255,6 +257,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Petani ${newFarmer.name} berhasil ditambahkan!`, 'success');
   };
 
+  const bulkAddFarmers = (dataList: Omit<Farmer, 'id'>[]): number => {
+    if (!dataList.length) return 0;
+    const now = Date.now();
+    const newFarmers: Farmer[] = dataList.map((data, idx) => ({
+      ...data,
+      id: `farmer-${now}-${idx}`,
+    }));
+    setFarmers(prev => [...newFarmers, ...prev]);
+    showToast(`Berhasil mengimpor ${newFarmers.length} data petani!`, 'success');
+    return newFarmers.length;
+  };
+
   const updateFarmer = (id: string, updates: Partial<Farmer>) => {
     setFarmers(prev =>
       prev.map(f => (f.id === id ? { ...f, ...updates } : f))
@@ -309,6 +323,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     showToast(`Rekapan panen ${newBatch.batchNumber} berhasil disimpan!`, 'success');
+  };
+
+  const bulkAddHarvestBatches = (batchList: Omit<HarvestBatch, 'id'>[]): number => {
+    if (!batchList.length) return 0;
+    const now = Date.now();
+    const newBatches: HarvestBatch[] = batchList.map((batch, idx) => ({
+      ...batch,
+      id: `batch-${now}-${idx}`,
+    }));
+    setHarvestBatches(prev => [...newBatches, ...prev]);
+
+    // Add finance transactions
+    const newTrxs: FinanceTransaction[] = [];
+    newBatches.forEach((batch, idx) => {
+      if (batch.medaranOmsetValueRp > 0) {
+        newTrxs.push({
+          id: `trx-${now}-${idx}-1`,
+          date: batch.harvestDate,
+          type: 'pemasukan',
+          category: 'medaran_lebih',
+          title: `Omset Medaran Lebih (${batch.batchNumber})`,
+          amount: batch.medaranOmsetValueRp,
+          batchReferenceId: batch.id,
+          description: `Surplus ${batch.weightDifferenceKg} kg x ${batch.tbsPricePerKg}/kg PKS`,
+          recordedBy: currentUser.name,
+        });
+      }
+      if (batch.groupFeeTotalRp > 0) {
+        newTrxs.push({
+          id: `trx-${now}-${idx}-2`,
+          date: batch.harvestDate,
+          type: 'pemasukan',
+          category: 'iuran_kas',
+          title: `Iuran Kas Kelompok (${batch.batchNumber})`,
+          amount: batch.groupFeeTotalRp,
+          batchReferenceId: batch.id,
+          description: `Iuran kas Rp ${batch.groupFeePerKg}/kg dari ${batch.totalTphWeightKg} kg TPH`,
+          recordedBy: currentUser.name,
+        });
+      }
+    });
+
+    if (newTrxs.length > 0) {
+      setFinanceTransactions(prev => [...newTrxs, ...prev]);
+    }
+
+    showToast(`Berhasil mengimpor ${newBatches.length} catatan panen baru!`, 'success');
+    return newBatches.length;
   };
 
   const updateHarvestBatch = (id: string, updates: Partial<HarvestBatch>) => {
@@ -419,9 +481,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         harvestBatches,
         financeTransactions,
         addFarmer,
+        bulkAddFarmers,
         updateFarmer,
         deleteFarmer,
         addHarvestBatch,
+        bulkAddHarvestBatches,
         updateHarvestBatch,
         deleteHarvestBatch,
         addFinanceTransaction,

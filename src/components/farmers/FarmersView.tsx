@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Farmer } from '../../types';
-import { formatRupiah, formatKg, downloadCSV } from '../../lib/utils';
+import { formatRupiah, formatKg, downloadCSV, downloadFarmerTemplate } from '../../lib/utils';
 import { Badge } from '../common/Badge';
+import { FarmerImportModal } from './FarmerImportModal';
 import {
   Users,
   Search,
@@ -11,6 +12,7 @@ import {
   Edit2,
   Trash2,
   Download,
+  Upload,
   Phone,
   MapPin,
   Trees,
@@ -34,6 +36,7 @@ export const FarmersView: React.FC<FarmersViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [blockFilter, setBlockFilter] = useState('all');
   const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const effectiveSearch = globalSearch || searchTerm;
 
@@ -48,7 +51,7 @@ export const FarmersView: React.FC<FarmersViewProps> = ({
       b.items.forEach(item => {
         if (map[item.farmerId]) {
           map[item.farmerId].totalKg += item.tphWeightKg;
-          map[item.farmerId].totalBunches += item.bunchCount;
+          map[item.farmerId].totalBunches += item.bunchCount || 0;
           map[item.farmerId].totalEarnings += item.farmerShareRp;
           map[item.farmerId].batchesCount += 1;
         }
@@ -150,12 +153,32 @@ export const FarmersView: React.FC<FarmersViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={downloadFarmerTemplate}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs"
+            title="Unduh Template Format CSV Petani"
+          >
+            <Download className="h-4 w-4 text-emerald-600" /> Template Petani
+          </button>
+
+          {currentUser.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 cursor-pointer transition-colors shadow-2xs"
+              title="Import Data Nama Petani Massal via CSV"
+            >
+              <Upload className="h-4 w-4" /> Import Petani (CSV)
+            </button>
+          )}
+
           <button
             onClick={handleExportCSV}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs"
           >
-            <Download className="h-4 w-4" /> Export Petani
+            <Download className="h-4 w-4" /> Export CSV
           </button>
 
           {currentUser.role === 'admin' && (
@@ -310,6 +333,12 @@ export const FarmersView: React.FC<FarmersViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Bulk Farmer Import Modal */}
+      <FarmerImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 };

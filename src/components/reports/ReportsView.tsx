@@ -62,7 +62,7 @@ export const ReportsView: React.FC = () => {
       kasRp += b.groupFeeTotalRp;
       omsetRp += b.totalGroupOmsetRp;
       farmerPayoutRp += b.totalFarmerPayoutRp;
-      totalBunches += b.totalBunches;
+      totalBunches += b.totalBunches || 0;
     });
 
     const avgBjr = totalBunches > 0 ? (tphKg / totalBunches).toFixed(1) : '0';

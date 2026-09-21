@@ -24,7 +24,7 @@ export const FarmerSlipModal: React.FC<FarmerSlipModalProps> = ({
     batchNumber: string;
     harvestDate: string;
     spbNumber: string;
-    bunchCount: number;
+    bunchCount?: number;
     tphWeightKg: number;
     tbsPricePerKg: number;
     groupDeductionRp: number;
@@ -39,7 +39,7 @@ export const FarmerSlipModal: React.FC<FarmerSlipModalProps> = ({
         batchNumber: b.batchNumber,
         harvestDate: b.harvestDate,
         spbNumber: b.spbNumber,
-        bunchCount: item.bunchCount,
+        bunchCount: item.bunchCount || 0,
         tphWeightKg: item.tphWeightKg,
         tbsPricePerKg: b.tbsPricePerKg,
         groupDeductionRp: item.groupDeductionRp,
@@ -50,7 +50,7 @@ export const FarmerSlipModal: React.FC<FarmerSlipModalProps> = ({
   });
 
   const totalKg = farmerRecords.reduce((sum, r) => sum + r.tphWeightKg, 0);
-  const totalBunches = farmerRecords.reduce((sum, r) => sum + r.bunchCount, 0);
+  const totalBunches = farmerRecords.reduce((sum, r) => sum + (r.bunchCount || 0), 0);
   const totalDeductions = farmerRecords.reduce((sum, r) => sum + r.groupDeductionRp, 0);
   const totalNetPayout = farmerRecords.reduce((sum, r) => sum + r.farmerShareRp, 0);
 

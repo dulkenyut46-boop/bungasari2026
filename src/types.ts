@@ -31,7 +31,7 @@ export interface Farmer {
 export interface HarvestFarmerDetail {
   farmerId: string;
   farmerName: string;
-  bunchCount: number; // Jumlah Janjang
+  bunchCount?: number; // Jumlah Janjang (opsional)
   tphWeightKg: number; // Timbangan di TPH Kebun (Kg)
   tphLocation: string; // TPH 01, TPH 02, etc.
   sortirDeductionKg?: number; // Potongan sortir bila ada
@@ -53,7 +53,7 @@ export interface HarvestBatch {
   ticketNumberPKS: string; // No Tiket Timbang PKS
   
   // Timbangan Kebun (TPH)
-  totalBunches: number; // Total Janjang
+  totalBunches?: number; // Total Janjang (opsional)
   totalTphWeightKg: number; // Total Berat TPH Seluruh Petani (Kg)
   
   // Timbangan Pabrik (PKS)

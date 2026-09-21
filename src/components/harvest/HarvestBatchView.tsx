@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { HarvestBatch } from '../../types';
-import { formatRupiah, formatKg, formatDate, downloadCSV } from '../../lib/utils';
+import { formatRupiah, formatKg, formatDate, downloadCSV, downloadHarvestBatchTemplate } from '../../lib/utils';
 import { Badge } from '../common/Badge';
+import { HarvestBatchImportModal } from './HarvestBatchImportModal';
 import {
   Search,
   Plus,
   Filter,
   Download,
+  Upload,
   Eye,
   Edit2,
   Trash2,
@@ -37,6 +39,7 @@ export const HarvestBatchView: React.FC<HarvestBatchViewProps> = ({
   const [differenceFilter, setDifferenceFilter] = useState<'all' | 'surplus' | 'susut'>('all');
   const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'diff_desc' | 'weight_desc'>('date_desc');
   const [page, setPage] = useState(1);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const pageSize = 8;
 
   // Combine search
@@ -133,7 +136,7 @@ export const HarvestBatchView: React.FC<HarvestBatchViewProps> = ({
       b.factoryDestination,
       b.truckPlate,
       b.driverName,
-      b.totalBunches,
+      b.totalBunches || 0,
       b.totalTphWeightKg,
       b.factoryGrossKg,
       b.factoryTareKg,
@@ -173,7 +176,27 @@ export const HarvestBatchView: React.FC<HarvestBatchViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={downloadHarvestBatchTemplate}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs"
+            title="Unduh format template CSV rekapan panen"
+          >
+            <Download className="h-4 w-4 text-emerald-600" /> Template Panen
+          </button>
+
+          {currentUser.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 cursor-pointer transition-colors shadow-2xs"
+              title="Import Data Rekapan Panen Massal via CSV"
+            >
+              <Upload className="h-4 w-4" /> Import Panen Baru (CSV)
+            </button>
+          )}
+
           <button
             onClick={handleExportCSV}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors shadow-2xs"
@@ -404,6 +427,12 @@ export const HarvestBatchView: React.FC<HarvestBatchViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Bulk Harvest Batch Import Modal */}
+      <HarvestBatchImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 };

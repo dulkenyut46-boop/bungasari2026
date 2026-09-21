@@ -73,7 +73,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           };
         }
         farmerTotals[item.farmerId].totalKg += item.tphWeightKg;
-        farmerTotals[item.farmerId].bunches += item.bunchCount;
+        farmerTotals[item.farmerId].bunches += item.bunchCount || 0;
       });
     });
 
