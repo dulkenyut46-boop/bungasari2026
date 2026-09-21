@@ -12,6 +12,7 @@ import { FarmerSlipModal } from './components/farmers/FarmerSlipModal';
 import { HarvestCalculator } from './components/calculator/HarvestCalculator';
 import { FinanceView } from './components/finance/FinanceView';
 import { ReportsView } from './components/reports/ReportsView';
+import { SettingsView } from './components/settings/SettingsView';
 import { AuthModal } from './components/common/AuthModal';
 import { ToastContainer } from './components/common/Toast';
 import { HarvestBatch, Farmer } from './types';
@@ -111,6 +112,8 @@ const MainAppContent: React.FC = () => {
             {activeTab === 'kas_kelompok' && <FinanceView />}
 
             {activeTab === 'laporan' && <ReportsView />}
+
+            {activeTab === 'pengaturan' && <SettingsView />}
           </div>
         </main>
       </div>

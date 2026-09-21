@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { Farmer, HarvestBatch, FinanceTransaction, UserProfile, ActiveTab, UserRole } from '../types';
+import { Farmer, HarvestBatch, FinanceTransaction, UserProfile, ActiveTab, UserRole, AdminAccountSettings } from '../types';
 import { INITIAL_USERS, INITIAL_FARMERS, INITIAL_HARVEST_BATCHES, INITIAL_FINANCE_TRANSACTIONS } from '../data/initialData';
 
 interface ToastInfo {
@@ -16,6 +16,13 @@ interface AppContextType {
   login: (email: string, role: UserRole, farmerId?: string) => boolean;
   logout: () => void;
   isLoggedIn: boolean;
+
+  // Admin & Database Settings
+  adminSettings: AdminAccountSettings;
+  updateAdminSettings: (settings: Partial<AdminAccountSettings>) => void;
+  restoreFullDatabase: (backupData: any) => { success: boolean; message: string; counts?: { farmers: number; batches: number; transactions: number } };
+  lastBackupDate: string | null;
+  recordBackupDate: () => void;
 
   // Theme
   theme: 'light' | 'dark';
@@ -82,6 +89,19 @@ const STORAGE_KEYS = {
   BATCHES: 'bunga_sari_batches',
   FINANCE: 'bunga_sari_finance',
   LOGGED_IN: 'bunga_sari_auth_state',
+  ADMIN_SETTINGS: 'bunga_sari_admin_settings',
+  LAST_BACKUP: 'bunga_sari_last_backup',
+};
+
+const DEFAULT_ADMIN_SETTINGS: AdminAccountSettings = {
+  adminName: 'H. Sudarsono',
+  adminEmail: 'admin@bungasari.id',
+  adminPhone: '0812-3456-7890',
+  organizationName: 'Kelompok Tani Bunga Sari',
+  adminPosition: 'Ketua Kelompok Tani',
+  securityPin: '123456',
+  requirePinForDelete: true,
+  lastUpdated: new Date().toISOString(),
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -146,6 +166,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LOGGED_IN, String(isLoggedIn));
   }, [isLoggedIn]);
+
+  // Admin Account & Database Settings
+  const [adminSettings, setAdminSettings] = useState<AdminAccountSettings>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ADMIN_SETTINGS);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // fallback
+      }
+    }
+    return DEFAULT_ADMIN_SETTINGS;
+  });
+
+  const [lastBackupDate, setLastBackupDate] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEYS.LAST_BACKUP);
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_SETTINGS, JSON.stringify(adminSettings));
+  }, [adminSettings]);
 
   // Data states
   const [farmers, setFarmers] = useState<Farmer[]>(() => {
@@ -410,7 +451,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setHarvestBatches(INITIAL_HARVEST_BATCHES);
     setFinanceTransactions(INITIAL_FINANCE_TRANSACTIONS);
     setCurrentUser(INITIAL_USERS[0]);
+    setAdminSettings(DEFAULT_ADMIN_SETTINGS);
     showToast('Data dikembalikan ke data awal demonstrasi', 'info');
+  };
+
+  const updateAdminSettings = (updates: Partial<AdminAccountSettings>) => {
+    setAdminSettings(prev => {
+      const updated = { ...prev, ...updates, lastUpdated: new Date().toISOString() };
+      if (currentUser.role === 'admin') {
+        setCurrentUser(curr => ({
+          ...curr,
+          name: updated.adminName || curr.name,
+          email: updated.adminEmail || curr.email,
+          phone: updated.adminPhone || curr.phone,
+        }));
+      }
+      return updated;
+    });
+    showToast('Pengaturan akun admin berhasil diperbarui', 'success');
+  };
+
+  const recordBackupDate = () => {
+    const now = new Date().toISOString();
+    setLastBackupDate(now);
+    localStorage.setItem(STORAGE_KEYS.LAST_BACKUP, now);
+  };
+
+  const restoreFullDatabase = (backupData: any): { success: boolean; message: string; counts?: { farmers: number; batches: number; transactions: number } } => {
+    try {
+      if (!backupData || typeof backupData !== 'object') {
+        return { success: false, message: 'Format data cadangan tidak valid (harus file JSON).' };
+      }
+
+      const importedFarmers = Array.isArray(backupData.farmers) ? backupData.farmers : null;
+      const importedBatches = Array.isArray(backupData.harvestBatches) ? backupData.harvestBatches : null;
+      const importedFinance = Array.isArray(backupData.financeTransactions) ? backupData.financeTransactions : null;
+
+      if (!importedFarmers && !importedBatches && !importedFinance) {
+        return { success: false, message: 'File tidak memuat data petani, batch panen, atau kas kelompok yang dikenali.' };
+      }
+
+      if (importedFarmers) {
+        setFarmers(importedFarmers);
+        localStorage.setItem(STORAGE_KEYS.FARMERS, JSON.stringify(importedFarmers));
+      }
+      if (importedBatches) {
+        setHarvestBatches(importedBatches);
+        localStorage.setItem(STORAGE_KEYS.BATCHES, JSON.stringify(importedBatches));
+      }
+      if (importedFinance) {
+        setFinanceTransactions(importedFinance);
+        localStorage.setItem(STORAGE_KEYS.FINANCE, JSON.stringify(importedFinance));
+      }
+      if (backupData.adminSettings) {
+        setAdminSettings(backupData.adminSettings);
+        localStorage.setItem(STORAGE_KEYS.ADMIN_SETTINGS, JSON.stringify(backupData.adminSettings));
+      }
+
+      const counts = {
+        farmers: importedFarmers ? importedFarmers.length : farmers.length,
+        batches: importedBatches ? importedBatches.length : harvestBatches.length,
+        transactions: importedFinance ? importedFinance.length : financeTransactions.length,
+      };
+
+      showToast(`Database berhasil dipulihkan: ${counts.farmers} Petani, ${counts.batches} Panen, ${counts.transactions} Transaksi Kas`, 'success');
+      return { success: true, message: 'Pemulihan database berhasil.', counts };
+    } catch (err: any) {
+      return { success: false, message: `Gagal memulihkan database: ${err.message || 'Format rusak'}` };
+    }
   };
 
   // Computed metrics
@@ -491,6 +599,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addFinanceTransaction,
         deleteFinanceTransaction,
         resetToDemoData,
+        adminSettings,
+        updateAdminSettings,
+        restoreFullDatabase,
+        lastBackupDate,
+        recordBackupDate,
         toast,
         showToast,
         globalSearch,

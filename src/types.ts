@@ -102,4 +102,44 @@ export type ActiveTab =
   | 'petani'
   | 'kalkulator'
   | 'kas_kelompok'
-  | 'laporan';
+  | 'laporan'
+  | 'pengaturan';
+
+export interface AdminAccountSettings {
+  adminName: string;
+  adminEmail: string;
+  adminPhone: string;
+  organizationName: string;
+  adminPosition: string; // e.g. "Ketua Kelompok Tani"
+  securityPin: string;
+  requirePinForDelete: boolean;
+  lastUpdated?: string;
+}
+
+export interface RolePermissionItem {
+  id: string;
+  role: string;
+  label: string;
+  description: string;
+  userCount: number;
+  badgeColor: string;
+  canInputHarvest: boolean;
+  canEditHarvest: boolean;
+  canDeleteHarvest: boolean;
+  canManageFarmers: boolean;
+  canViewFinance: boolean;
+  canManageFinance: boolean;
+  canDownloadReports: boolean;
+  canManageSettings: boolean;
+  canBackupDatabase: boolean;
+}
+
+export interface DatabaseStorageStats {
+  farmersCount: number;
+  batchesCount: number;
+  transactionsCount: number;
+  totalStorageBytes: number;
+  lastBackupDate: string | null;
+  storageEngine: string;
+  integrityStatus: 'optimal' | 'warning' | 'error';
+}

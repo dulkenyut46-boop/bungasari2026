@@ -8,6 +8,7 @@ import {
   Calculator,
   Wallet,
   FileSpreadsheet,
+  Settings,
   Sprout,
   ShieldCheck,
   UserCheck,
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
     { id: 'kalkulator', label: 'Kalkulator Selisih', icon: Calculator },
     { id: 'kas_kelompok', label: 'Kas & Omset Kelompok', icon: Wallet },
     { id: 'laporan', label: 'Laporan & Slip Panen', icon: FileSpreadsheet },
+    { id: 'pengaturan', label: 'Pengaturan', icon: Settings, badge: 'Sistem' },
   ];
 
   const handleNavClick = (id: ActiveTab) => {
