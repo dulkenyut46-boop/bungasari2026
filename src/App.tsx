@@ -80,7 +80,7 @@ const MainAppContent: React.FC = () => {
 
         {/* Scrollable Viewport */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto w-full max-w-[1550px]">
             {activeTab === 'dashboard' && (
               <DashboardView
                 onSelectBatch={handleSelectBatch}

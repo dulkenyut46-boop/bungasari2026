@@ -149,85 +149,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="absolute -right-12 -bottom-12 h-56 w-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total TPH Kebun */}
-        <StatCard
-          title="Timbangan Kebun (TPH)"
-          value={formatKg(metrics.totalTphKg)}
-          subtitle={`${formatNumber(metrics.totalBunches)} Janjang TBS`}
-          icon={Scale}
-          variant="emerald"
-          badge="Kebun"
-        />
-
-        {/* Total Pabrik PKS */}
-        <StatCard
-          title="Timbangan Pabrik (PKS)"
-          value={formatKg(metrics.totalFactoryKg)}
-          subtitle="Netto setelah sortir pabrik"
-          icon={Factory}
-          variant="blue"
-          badge="Pabrik"
-        />
-
-        {/* Selisih Medaran Lebih */}
-        <StatCard
-          title="Selisih Medaran Lebih"
-          value={`+${formatKg(metrics.totalMedaranDiffKg)}`}
-          subtitle={`Rata-rata surplus +${metrics.medaranSurplusPercentage.toFixed(2)}%`}
-          icon={TrendingUp}
-          variant="emerald"
-          trend={{
-            value: `+${metrics.medaranSurplusPercentage.toFixed(1)}%`,
-            isPositive: true,
-            label: 'Surplus timbangan',
-          }}
-        />
-
-        {/* Omset Kelompok Tani */}
-        <StatCard
-          title="Total Omset Kelompok"
-          value={formatRupiah(metrics.totalGroupOmsetRp)}
-          subtitle={`Medaran (${formatRupiah(metrics.totalMedaranOmsetRp)}) + Iuran`}
-          icon={Wallet}
-          variant="amber"
-          badge="Omset Poktan"
-        />
-      </div>
-
-      {/* Secondary Quick Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Total Hak Petani</span>
-          <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
-            {formatRupiah(metrics.totalFarmerPayoutRp)}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Harga TBS Rata-rata</span>
-          <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
-            {formatRupiah(metrics.averagePricePerKg)} / Kg
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Kas Bersih Kelompok</span>
-          <div className="text-base sm:text-lg font-bold text-sky-600 dark:text-sky-400 truncate">
-            {formatRupiah(metrics.kasBalanceRp)}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Anggota Petani Aktif</span>
-          <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
-            {metrics.activeFarmersCount} Orang ({metrics.totalLandAreaHa} Ha)
-          </div>
-        </div>
-      </div>
-
-      {/* Main Dashboard Layout: Left Farmers Sidebar (4 cols) & Right Content (8 cols) */}
+      {/* Main Dashboard Layout: Left Farmers List (4 cols) & Right KPIs/Charts (8 cols) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-        {/* Left Column: Samping Sebelah Kiri (Daftar Nama Petani) */}
-        <div className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
+        {/* Left Column: Samping Sebelah Kiri (Daftar Nama Petani di Dashboard Utama) */}
+        <div className="lg:col-span-4 lg:sticky lg:top-4 space-y-4">
           <DashboardFarmersSidebar
             farmers={farmers}
             harvestBatches={harvestBatches}
@@ -236,8 +161,83 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           />
         </div>
 
-        {/* Right Column (8 cols): Charts & Tables */}
+        {/* Right Column (8 cols): KPI Metrics, Charts & Rekapitulasi Panen */}
         <div className="lg:col-span-8 space-y-6">
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+            {/* Total TPH Kebun */}
+            <StatCard
+              title="Timbangan Kebun (TPH)"
+              value={formatKg(metrics.totalTphKg)}
+              subtitle={`${formatNumber(metrics.totalBunches)} Janjang TBS`}
+              icon={Scale}
+              variant="emerald"
+              badge="Kebun"
+            />
+
+            {/* Total Pabrik PKS */}
+            <StatCard
+              title="Timbangan Pabrik (PKS)"
+              value={formatKg(metrics.totalFactoryKg)}
+              subtitle="Netto setelah sortir pabrik"
+              icon={Factory}
+              variant="blue"
+              badge="Pabrik"
+            />
+
+            {/* Selisih Medaran Lebih */}
+            <StatCard
+              title="Selisih Medaran Lebih"
+              value={`+${formatKg(metrics.totalMedaranDiffKg)}`}
+              subtitle={`Rata-rata surplus +${metrics.medaranSurplusPercentage.toFixed(2)}%`}
+              icon={TrendingUp}
+              variant="emerald"
+              trend={{
+                value: `+${metrics.medaranSurplusPercentage.toFixed(1)}%`,
+                isPositive: true,
+                label: 'Surplus timbangan',
+              }}
+            />
+
+            {/* Omset Kelompok Tani */}
+            <StatCard
+              title="Total Omset Kelompok"
+              value={formatRupiah(metrics.totalGroupOmsetRp)}
+              subtitle={`Medaran (${formatRupiah(metrics.totalMedaranOmsetRp)}) + Iuran`}
+              icon={Wallet}
+              variant="amber"
+              badge="Omset Poktan"
+            />
+          </div>
+
+          {/* Secondary Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Total Hak Petani</span>
+              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
+                {formatRupiah(metrics.totalFarmerPayoutRp)}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Harga TBS Rata-rata</span>
+              <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                {formatRupiah(metrics.averagePricePerKg)} / Kg
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Kas Bersih Kelompok</span>
+              <div className="text-base sm:text-lg font-bold text-sky-600 dark:text-sky-400 truncate">
+                {formatRupiah(metrics.kasBalanceRp)}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs dark:border-slate-800 dark:bg-slate-900">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Anggota Petani Aktif</span>
+              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
+                {metrics.activeFarmersCount} Orang ({metrics.totalLandAreaHa} Ha)
+              </div>
+            </div>
+          </div>
+
           {/* Charts Section */}
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
             {/* Left 7 Cols on XL: Timeline Area Chart (TPH vs Pabrik) */}

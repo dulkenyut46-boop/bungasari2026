@@ -29,8 +29,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
 
   const navItems: { id: ActiveTab; label: string; icon: React.ElementType; badge?: string }[] = [
     { id: 'dashboard', label: 'Ringkasan Dashboard', icon: LayoutDashboard },
+    { id: 'petani', label: 'Daftar Petani', icon: Users, badge: '20 Anggota' },
     { id: 'panen', label: 'Catatan Per Manen', icon: Truck, badge: 'TPH vs PKS' },
-    { id: 'petani', label: 'Rekapan Petani', icon: Users, badge: '20 Anggota' },
     { id: 'kalkulator', label: 'Kalkulator Selisih', icon: Calculator },
     { id: 'kas_kelompok', label: 'Kas & Omset Kelompok', icon: Wallet },
     { id: 'laporan', label: 'Laporan & Slip Panen', icon: FileSpreadsheet },

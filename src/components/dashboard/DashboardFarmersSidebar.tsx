@@ -11,6 +11,8 @@ import {
   TrendingUp,
   MapPin,
   CheckCircle2,
+  Phone,
+  CreditCard,
   X
 } from 'lucide-react';
 
@@ -95,7 +97,7 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                Daftar Nama Petani
+                Daftar Petani
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
                   {farmers.length} Anggota
                 </span>
@@ -198,7 +200,7 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
       </div>
 
       {/* Farmers List */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800/80 overflow-y-auto max-h-[620px] scrollbar-thin">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800/80 overflow-y-auto max-h-[680px] xl:max-h-[760px] scrollbar-thin">
         {filteredFarmers.length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
             Tidak ada petani yang sesuai pencarian "{searchQuery}"
@@ -242,6 +244,19 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
                       <span>•</span>
                       <span className="shrink-0">{farmer.landAreaHa} Ha</span>
                     </div>
+
+                    {farmer.phone && (
+                      <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">
+                        <Phone className="h-2.5 w-2.5 shrink-0" />
+                        <span className="truncate">{farmer.phone}</span>
+                        {farmer.bankAccount?.bankName && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{farmer.bankAccount.bankName}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     {/* Stats summary: Total Panen & Hak Petani */}
                     <div className="flex items-center gap-3 mt-1.5 pt-1 border-t border-slate-100/60 dark:border-slate-800/60 text-[11px]">
