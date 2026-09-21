@@ -224,9 +224,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Main Dashboard Layout: Left Content (8 cols) & Right Farmers Sidebar (4 cols) */}
+      {/* Main Dashboard Layout: Left Farmers Sidebar (4 cols) & Right Content (8 cols) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-        {/* Left Column (8 cols): Charts & Tables */}
+        {/* Left Column: Samping Sebelah Kiri (Daftar Nama Petani) */}
+        <div className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
+          <DashboardFarmersSidebar
+            farmers={farmers}
+            harvestBatches={harvestBatches}
+            onViewSlip={onViewSlip}
+            onOpenNewFarmer={onOpenNewFarmer}
+          />
+        </div>
+
+        {/* Right Column (8 cols): Charts & Tables */}
         <div className="lg:col-span-8 space-y-6">
           {/* Charts Section */}
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -483,16 +493,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </table>
         </div>
       </div>
-    </div>
-
-    {/* Right Column: Samping Sebelah Kanan (Daftar Nama Petani) */}
-    <div className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
-      <DashboardFarmersSidebar
-        farmers={farmers}
-        harvestBatches={harvestBatches}
-        onViewSlip={onViewSlip}
-        onOpenNewFarmer={onOpenNewFarmer}
-      />
     </div>
   </div>
 </div>
