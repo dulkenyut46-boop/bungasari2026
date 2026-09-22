@@ -32,8 +32,8 @@ export const FarmerSlipModal: React.FC<FarmerSlipModalProps> = ({
     tphLocation: string;
   }[] = [];
 
-  batches.forEach(b => {
-    const item = b.items.find(i => i.farmerId === farmer.id);
+  (batches || []).forEach(b => {
+    const item = (b?.items || []).find(i => i.farmerId === farmer.id);
     if (item) {
       farmerRecords.push({
         batchNumber: b.batchNumber,

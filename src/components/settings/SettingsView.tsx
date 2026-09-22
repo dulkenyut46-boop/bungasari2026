@@ -50,15 +50,15 @@ export const SettingsView: React.FC = () => {
   // Active sub-tab: 'admin' | 'roles' | 'database'
   const [activeSubTab, setActiveSubTab] = useState<'admin' | 'roles' | 'database'>('admin');
 
-  // Form states for Admin Profile
-  const [adminName, setAdminName] = useState(adminSettings.adminName);
-  const [adminPosition, setAdminPosition] = useState(adminSettings.adminPosition);
-  const [adminEmail, setAdminEmail] = useState(adminSettings.adminEmail);
-  const [adminPhone, setAdminPhone] = useState(adminSettings.adminPhone);
-  const [orgName, setOrgName] = useState(adminSettings.organizationName);
-  const [securityPin, setSecurityPin] = useState(adminSettings.securityPin);
+  // Form states for Admin Profile with fallbacks
+  const [adminName, setAdminName] = useState(adminSettings?.adminName || 'H. Sudarsono');
+  const [adminPosition, setAdminPosition] = useState(adminSettings?.adminPosition || 'Ketua Kelompok Tani');
+  const [adminEmail, setAdminEmail] = useState(adminSettings?.adminEmail || 'admin@bungasari.id');
+  const [adminPhone, setAdminPhone] = useState(adminSettings?.adminPhone || '0812-3456-7890');
+  const [orgName, setOrgName] = useState(adminSettings?.organizationName || 'Kelompok Tani Bunga Sari');
+  const [securityPin, setSecurityPin] = useState(adminSettings?.securityPin || '123456');
   const [showPin, setShowPin] = useState(false);
-  const [requirePinForDelete, setRequirePinForDelete] = useState(adminSettings.requirePinForDelete);
+  const [requirePinForDelete, setRequirePinForDelete] = useState(adminSettings?.requirePinForDelete ?? true);
 
   // Restore DB state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,10 +75,13 @@ export const SettingsView: React.FC = () => {
   // Storage Stats calculation
   const storageEstimates = React.useMemo(() => {
     try {
-      const rawFarmers = JSON.stringify(farmers);
-      const rawBatches = JSON.stringify(harvestBatches);
-      const rawFinance = JSON.stringify(financeTransactions);
-      const rawAdmin = JSON.stringify(adminSettings);
+      const safeFarmers = farmers || [];
+      const safeBatches = harvestBatches || [];
+      const safeFinance = financeTransactions || [];
+      const rawFarmers = JSON.stringify(safeFarmers);
+      const rawBatches = JSON.stringify(safeBatches);
+      const rawFinance = JSON.stringify(safeFinance);
+      const rawAdmin = JSON.stringify(adminSettings || {});
       const totalBytes = new Blob([rawFarmers, rawBatches, rawFinance, rawAdmin]).size;
       const totalKb = (totalBytes / 1024).toFixed(1);
       const quotaKb = 5120; // Standard 5MB local storage quota
@@ -89,22 +92,25 @@ export const SettingsView: React.FC = () => {
         totalKb,
         usagePercentage: usagePercentage.toFixed(2),
         entityCounts: {
-          farmers: farmers.length,
-          batches: harvestBatches.length,
-          transactions: financeTransactions.length,
-          total: farmers.length + harvestBatches.length + financeTransactions.length,
+          farmers: safeFarmers.length,
+          batches: safeBatches.length,
+          transactions: safeFinance.length,
+          total: safeFarmers.length + safeBatches.length + safeFinance.length,
         }
       };
     } catch {
+      const safeFarmers = farmers || [];
+      const safeBatches = harvestBatches || [];
+      const safeFinance = financeTransactions || [];
       return {
         totalBytes: 0,
         totalKb: '0',
         usagePercentage: '0.1',
         entityCounts: {
-          farmers: farmers.length,
-          batches: harvestBatches.length,
-          transactions: financeTransactions.length,
-          total: farmers.length + harvestBatches.length + financeTransactions.length,
+          farmers: safeFarmers.length,
+          batches: safeBatches.length,
+          transactions: safeFinance.length,
+          total: safeFarmers.length + safeBatches.length + safeFinance.length,
         }
       };
     }
@@ -238,7 +244,8 @@ export const SettingsView: React.FC = () => {
 
   // Handle Reset to Demo
   const handleExecuteReset = () => {
-    if (adminSettings.requirePinForDelete && confirmPinInput !== adminSettings.securityPin) {
+    const activePin = adminSettings?.securityPin || securityPin || '123456';
+    if (adminSettings?.requirePinForDelete && confirmPinInput !== activePin) {
       showToast('PIN keamanan salah! Reset dibatalkan.', 'error');
       return;
     }
@@ -305,7 +312,7 @@ export const SettingsView: React.FC = () => {
       role: 'petani',
       label: 'Petani Anggota (20 Petani)',
       description: 'Hak akses transparansi melihat slip panen pribadi, riwayat timbangan TPH, dan harga TBS harian.',
-      userCount: farmers.length || 20,
+      userCount: (farmers || []).length || 20,
       badgeColor: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
       canInputHarvest: false,
       canEditHarvest: false,
@@ -342,7 +349,7 @@ export const SettingsView: React.FC = () => {
           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-700 shadow-2xs dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-semibold text-slate-900 dark:text-white">
-              {farmers.length} Petani Terdaftar
+              {(farmers || []).length} Petani Terdaftar
             </span>
             <span className="text-slate-400">|</span>
             <span className="text-slate-500 dark:text-slate-400">
@@ -892,7 +899,7 @@ export const SettingsView: React.FC = () => {
                 </div>
               </div>
               <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                {farmers.length} Petani • {harvestBatches.length} Panen • {financeTransactions.length} Kas
+                {(farmers || []).length} Petani • {(harvestBatches || []).length} Panen • {(financeTransactions || []).length} Kas
               </div>
             </div>
 
@@ -1182,10 +1189,10 @@ export const SettingsView: React.FC = () => {
             Tindakan ini akan mengatur ulang data petani, batch panen, dan transaksi kas ke 20 petani Bunga Sari standar.
           </div>
 
-          {adminSettings.requirePinForDelete && (
+          {adminSettings?.requirePinForDelete && (
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Masukkan PIN Keamanan Admin ({adminSettings.securityPin.length} Digit)
+                Masukkan PIN Keamanan Admin ({(adminSettings?.securityPin || securityPin || '123456').length} Digit)
               </label>
               <input
                 type="password"

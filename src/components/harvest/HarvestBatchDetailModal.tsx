@@ -86,7 +86,7 @@ export const HarvestBatchDetailModal: React.FC<HarvestBatchDetailModalProps> = (
               {formatKg(batch.totalTphWeightKg)}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Total: {batch.totalBunches} Janjang ({batch.items.length} Petani)
+              Total: {batch.totalBunches || 0} Janjang ({(batch.items || []).length} Petani)
             </div>
           </div>
 
@@ -152,13 +152,14 @@ export const HarvestBatchDetailModal: React.FC<HarvestBatchDetailModalProps> = (
               Daftar Timbangan Petani di Kebun (TPH):
             </h4>
             <span className="text-xs text-slate-500">
-              {batch.items.length} Anggota Terdaftar
+              {(batch.items || []).length} Anggota Terdaftar
             </span>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
             {(() => {
-              const hasJanjang = batch.items.some(i => (i.bunchCount || 0) > 0);
+              const safeItems = batch.items || [];
+              const hasJanjang = safeItems.some(i => (i.bunchCount || 0) > 0);
               return (
                 <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
                   <thead className="bg-slate-100/70 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
@@ -174,7 +175,7 @@ export const HarvestBatchDetailModal: React.FC<HarvestBatchDetailModalProps> = (
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {batch.items.map((item, idx) => {
+                    {safeItems.map((item, idx) => {
                       const bjr = (item.bunchCount || 0) > 0 ? (item.tphWeightKg / item.bunchCount!).toFixed(1) : '-';
                       return (
                         <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">

@@ -36,8 +36,8 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
   // Compute stats for each farmer from harvest batches
   const farmerStats = useMemo(() => {
     const stats: Record<string, { totalKg: number; totalEarningsRp: number; count: number }> = {};
-    harvestBatches.forEach(batch => {
-      batch.items.forEach(item => {
+    (harvestBatches || []).forEach(batch => {
+      (batch?.items || []).forEach(item => {
         if (!stats[item.farmerId]) {
           stats[item.farmerId] = { totalKg: 0, totalEarningsRp: 0, count: 0 };
         }
@@ -51,7 +51,8 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
 
   // Filter and sort farmers
   const filteredFarmers = useMemo(() => {
-    let result = farmers.filter(farmer => {
+    const safeFarmers = farmers || [];
+    let result = safeFarmers.filter(farmer => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -80,7 +81,7 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
 
   // Total Land Area & Total Tonase
   const totalArea = useMemo(() => {
-    return farmers.reduce((sum, f) => sum + (f.landAreaHa || 0), 0);
+    return (farmers || []).reduce((sum, f) => sum + (f.landAreaHa || 0), 0);
   }, [farmers]);
 
   return (
@@ -99,7 +100,7 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                 Daftar Petani
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                  {farmers.length} Anggota
+                  {(farmers || []).length} Anggota
                 </span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -201,12 +202,12 @@ export const DashboardFarmersSidebar: React.FC<DashboardFarmersSidebarProps> = (
 
       {/* Farmers List */}
       <div className="divide-y divide-slate-100 dark:divide-slate-800/80 overflow-y-auto max-h-[680px] xl:max-h-[760px] scrollbar-thin">
-        {filteredFarmers.length === 0 ? (
+        {(filteredFarmers || []).length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400">
             Tidak ada petani yang sesuai pencarian "{searchQuery}"
           </div>
         ) : (
-          filteredFarmers.map((farmer) => {
+          (filteredFarmers || []).map((farmer) => {
             const stats = farmerStats[farmer.id];
             const initials = farmer.name
               .split(' ')

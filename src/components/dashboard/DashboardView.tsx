@@ -53,10 +53,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Data for Area Chart: Comparison of TPH vs Factory Net over time
   const timelineChartData = useMemo(() => {
-    return [...harvestBatches]
+    return [...(harvestBatches || [])]
       .sort((a, b) => new Date(a.harvestDate).getTime() - new Date(b.harvestDate).getTime())
       .map(b => ({
-        name: b.batchNumber.replace('BS/PANEN/', 'Manen '),
+        name: b.batchNumber ? b.batchNumber.replace('BS/PANEN/', 'Manen ') : 'Panen',
         date: formatDate(b.harvestDate),
         tphKg: b.totalTphWeightKg,
         pabrikKg: b.factoryFinalNetKg,
@@ -68,8 +68,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Data for Bar Chart: Top Farmers by production weight
   const topFarmersData = useMemo(() => {
     const farmerTotals: Record<string, { name: string; totalKg: number; bunches: number }> = {};
-    harvestBatches.forEach(b => {
-      b.items.forEach(item => {
+    (harvestBatches || []).forEach(b => {
+      (b?.items || []).forEach(item => {
         if (!farmerTotals[item.farmerId]) {
           farmerTotals[item.farmerId] = {
             name: item.farmerName,
@@ -103,7 +103,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ];
   }, [metrics]);
 
-  const recentBatches = harvestBatches.slice(0, 5);
+  const recentBatches = (harvestBatches || []).slice(0, 5);
 
   return (
     <div className="space-y-6">

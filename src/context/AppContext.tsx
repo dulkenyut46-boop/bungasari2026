@@ -172,7 +172,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(STORAGE_KEYS.ADMIN_SETTINGS);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...DEFAULT_ADMIN_SETTINGS,
+            ...parsed,
+            securityPin: parsed.securityPin || DEFAULT_ADMIN_SETTINGS.securityPin,
+          };
+        }
       } catch {
         // fallback
       }
@@ -188,12 +195,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.ADMIN_SETTINGS, JSON.stringify(adminSettings));
   }, [adminSettings]);
 
-  // Data states
+  // Data states with safe array validation
   const [farmers, setFarmers] = useState<Farmer[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.FARMERS);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {
         // fallback
       }
@@ -205,7 +213,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(STORAGE_KEYS.BATCHES);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       } catch {
         // fallback
       }
@@ -217,7 +226,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(STORAGE_KEYS.FINANCE);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       } catch {
         // fallback
       }
@@ -504,14 +514,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem(STORAGE_KEYS.FINANCE, JSON.stringify(importedFinance));
       }
       if (backupData.adminSettings) {
-        setAdminSettings(backupData.adminSettings);
-        localStorage.setItem(STORAGE_KEYS.ADMIN_SETTINGS, JSON.stringify(backupData.adminSettings));
+        const mergedSettings = {
+          ...DEFAULT_ADMIN_SETTINGS,
+          ...backupData.adminSettings,
+          securityPin: backupData.adminSettings.securityPin || DEFAULT_ADMIN_SETTINGS.securityPin,
+        };
+        setAdminSettings(mergedSettings);
+        localStorage.setItem(STORAGE_KEYS.ADMIN_SETTINGS, JSON.stringify(mergedSettings));
       }
 
       const counts = {
-        farmers: importedFarmers ? importedFarmers.length : farmers.length,
-        batches: importedBatches ? importedBatches.length : harvestBatches.length,
-        transactions: importedFinance ? importedFinance.length : financeTransactions.length,
+        farmers: importedFarmers ? importedFarmers.length : (farmers || []).length,
+        batches: importedBatches ? importedBatches.length : (harvestBatches || []).length,
+        transactions: importedFinance ? importedFinance.length : (financeTransactions || []).length,
       };
 
       showToast(`Database berhasil dipulihkan: ${counts.farmers} Petani, ${counts.batches} Panen, ${counts.transactions} Transaksi Kas`, 'success');
@@ -532,7 +547,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let totalBunches = 0;
     let totalPriceSum = 0;
 
-    harvestBatches.forEach(b => {
+    const safeBatches = harvestBatches || [];
+    const safeFarmers = farmers || [];
+    const safeFinance = financeTransactions || [];
+
+    safeBatches.forEach(b => {
       totalTphKg += b.totalTphWeightKg || 0;
       totalFactoryKg += b.factoryFinalNetKg || 0;
       totalMedaranOmsetRp += b.medaranOmsetValueRp || 0;
@@ -545,13 +564,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const totalMedaranDiffKg = totalFactoryKg - totalTphKg;
     const medaranSurplusPercentage = totalTphKg > 0 ? (totalMedaranDiffKg / totalTphKg) * 100 : 0;
-    const averagePricePerKg = harvestBatches.length > 0 ? Math.round(totalPriceSum / harvestBatches.length) : 2900;
+    const averagePricePerKg = safeBatches.length > 0 ? Math.round(totalPriceSum / safeBatches.length) : 2900;
 
-    const activeFarmersCount = farmers.filter(f => f.status === 'aktif').length;
-    const totalLandAreaHa = farmers.reduce((sum, f) => sum + (f.landAreaHa || 0), 0);
+    const activeFarmersCount = safeFarmers.filter(f => f.status === 'aktif').length;
+    const totalLandAreaHa = safeFarmers.reduce((sum, f) => sum + (f.landAreaHa || 0), 0);
 
     // Kas Balance: sum(pemasukan) - sum(pengeluaran)
-    const kasBalanceRp = financeTransactions.reduce((acc, t) => {
+    const kasBalanceRp = safeFinance.reduce((acc, t) => {
       return t.type === 'pemasukan' ? acc + t.amount : acc - t.amount;
     }, 0);
 
